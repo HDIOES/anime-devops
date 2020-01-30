@@ -1,0 +1,65 @@
+version: '3.6'
+
+volumes:
+  animedb:
+    driver: local
+
+services:
+    animedb:
+        image: postgres:11.6
+        environment:
+            POSTGRES_USER: anime_user
+            POSTGRES_PASSWORD: 12345
+            POSTGRES_DB: animedb
+            TZ: GMT-3
+        volumes:
+          - animedb:/var/lib/postgresql/data
+        ports:
+          - 5432:5432
+
+    nats:
+        image: nats
+        ports:
+          - 4222:4222
+  
+    app:
+        image: ivantimofeev/anime-app
+        environment: 
+          DATABASE_URL: 'postgres://anime_user:12345@animedb:5432/animedb?sslmode=disable'
+          NATS_URL: 'nats://nats:4222'
+        ports:
+          - 8000:8000
+        depends_on:
+          - animedb
+          - nats
+          - sender
+        links:
+          - animedb
+          - nats
+
+    sheduler:
+        image: ivantimofeev/anime-sheduler
+        environment: 
+          DATABASE_URL: 'postgres://anime_user:12345@animedb:5432/animedb?sslmode=disable'
+          NATS_URL: 'nats://nats:4222'
+        ports:
+          - 8002:8002
+        depends_on:
+          - animedb
+          - nats
+        links:
+          - animedb
+          - nats
+    
+    sender:
+        image: ivantimofeev/anime-sender
+        environment: 
+          NATS_URL: 'nats://nats:4222'
+        ports:
+          - 8001:8001
+        depends_on:
+          - nats
+        
+
+
+
